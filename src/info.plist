@@ -4,8 +4,6 @@
 <dict>
 	<key>bundleid</key>
 	<string>com.badtudou.jiumo-search</string>
-	<key>category</key>
-	<string>Internet</string>
 	<key>connections</key>
 	<dict>
 		<key>1AEE333F-4073-4E76-A286-91F869C65BE1</key>
@@ -67,6 +65,23 @@
 		<dict>
 			<key>config</key>
 			<dict>
+				<key>autopaste</key>
+				<false/>
+				<key>clipboardtext</key>
+				<string>{query}</string>
+				<key>transient</key>
+				<false/>
+			</dict>
+			<key>type</key>
+			<string>alfred.workflow.output.clipboard</string>
+			<key>uid</key>
+			<string>1AEE333F-4073-4E76-A286-91F869C65BE1</string>
+			<key>version</key>
+			<integer>2</integer>
+		</dict>
+		<dict>
+			<key>config</key>
+			<dict>
 				<key>alfredfiltersresults</key>
 				<false/>
 				<key>alfredfiltersresultsmatchmode</key>
@@ -84,7 +99,7 @@
 				<key>queuedelayimmediatelyinitially</key>
 				<false/>
 				<key>queuedelaymode</key>
-				<integer>0</integer>
+				<integer>1</integer>
 				<key>queuemode</key>
 				<integer>1</integer>
 				<key>runningsubtext</key>
@@ -100,27 +115,27 @@ HOST_FREEGEOIP = 'https://freegeoip.net'
 HOST_JIUMO = 'https://www.jiumodiary.com'
 
 HEADERS = {
-	'Content-Type' =&gt;'application/x-www-form-urlencoded',
-	'X-Requested-With' =&gt; 'XMLHttpRequest'
+    'Content-Type' =&gt;'application/x-www-form-urlencoded',
+    'X-Requested-With' =&gt; 'XMLHttpRequest'
 }
 
 ICONS = {
-	'vdisk.weibo.com' =&gt; 'weipan.icns',
-	'ishare.iask.com' =&gt; 'aiwen.icns',
-	'local'			  =&gt; 'icon.png',
-	'yun.baidu.com'	  =&gt; 'baiduwangpan.icns',
-	'pan.baidu.com'   =&gt; 'baiduwangpan.icns',
-	'喜马拉雅 (ximalaya.com)'	  =&gt; 'ximalaya.icns',
-	'gitbook.com' 	  =&gt; 'gitbook.icns',
-	'error'			  =&gt; 'error.icns'
+    'vdisk.weibo.com' =&gt; 'weipan.icns',
+    'ishare.iask.com' =&gt; 'aiwen.icns',
+    'local'           =&gt; 'icon.png',
+    'yun.baidu.com'   =&gt; 'baiduwangpan.icns',
+    'pan.baidu.com'   =&gt; 'baiduwangpan.icns',
+    '喜马拉雅 (ximalaya.com)'     =&gt; 'ximalaya.icns',
+    'gitbook.com'     =&gt; 'gitbook.icns',
+    'error'           =&gt; 'error.icns'
 }
 
 ERRORS = {
-	'tooshort' =&gt; '您查询的图书标题长度过短, 请重试',
-	'exceed'   =&gt; '您的查询已达到今日的最高次数',
-	'none'     =&gt; '没有找到相关的文档',
-	'network'  =&gt; '网络错误，请保持网络畅通',
-	'default'  =&gt; '未知错误'
+    'tooshort' =&gt; '您查询的图书标题长度过短, 请重试',
+    'exceed'   =&gt; '您的查询已达到今日的最高次数',
+    'none'     =&gt; '没有找到相关的文档',
+    'network'  =&gt; '网络错误，请保持网络畅通',
+    'default'  =&gt; '未知错误'
 }
 
 RESPONSE_SUCCEED = 'succeed'
@@ -129,70 +144,62 @@ NETWORK_ERROR = 'network'
 
 keywords = ARGV[0]
 
-def get_remote_ip
-	uri = URI("#{HOST_FREEGEOIP}/json/")
-	res = JSON.parse(Net::HTTP.get(uri))
-	res['ip']
-end
-
-
 def serch_books(keywords)
-	remote_ip = get_remote_ip()
-	url_str = 	&lt;&lt;EOF
-#{HOST_JIUMO}/init_hubs.php?q=#{URI::encode(keywords)}&amp;remote_ip=#{remote_ip}&amp;time_int=#{Time.now.to_i}
+    url_str =   &lt;&lt;EOF
+#{HOST_JIUMO}/init_hubs.php?q=#{URI::encode(keywords)}&amp;time_int=#{Time.now.to_i}
 EOF
-	uri = URI(url_str)
-	res = Net::HTTP.post_form(uri, HEADERS)
-	if res.is_a?(Net::HTTPSuccess)
-		res = JSON.parse(res.body)
-		raise res['status'] if res['status'] != RESPONSE_SUCCEED
-		res['id']
-	end
+    uri = URI(url_str)
+    res = Net::HTTP.post_form(uri, HEADERS)
+    if res.is_a?(Net::HTTPSuccess)
+        res = JSON.parse(res.body)
+        raise res['status'] if res['status'] != RESPONSE_SUCCEED
+        res['id']
+    end
 end
 
 def fetch_result(id, set=0)
-	url_str = &lt;&lt;EOF
+    url_str = &lt;&lt;EOF
 #{HOST_JIUMO}/ajax_fetch_hubs.php?id=#{id}&amp;set=#{set}
 EOF
-	uri = URI(url_str)
-	res = Net::HTTP.post_form(uri, HEADERS)
-	if res.is_a?(Net::HTTPSuccess)
-		res = JSON.parse(res.body)
-	end
+    uri = URI(url_str)
+    res = Net::HTTP.post_form(uri, HEADERS)
+    if res.is_a?(Net::HTTPSuccess)
+        res = JSON.parse(res.body)
+    end
 end
 
 def parse_result(result)
-	raise RESULT_NONE if  result['sources'].empty?
-	xml = REXML::Document.new
-	book_index = 0
-	element = xml.add_element ('items')
-	result['sources'].each do |item|
-		item['details']['data'].each  do |book|
-			book_index += 1
-			item_xml = element.add_element('item')
-			item_xml.add_element('title').add_text("#{book_index} . #{book['title']}")
-			item_xml.add_element('subtitle').add_text("#{book['host']} - #{book['des']}")
-			item_xml.add_element('arg').add_text(book['link'])
-			item_xml.add_element('autocomplete').add_text(book['title'])
-			item_xml.add_element('match').add_text(book['title'])
-			item_xml.add_element('icon').add_text("#{Dir.pwd}/#{ICONS[book['host']]}")
-		end
-	end
-	xml.write
+    raise RESULT_NONE if  result['sources'].empty?
+    xml = REXML::Document.new
+    book_index = 0
+    element = xml.add_element ('items')
+    result['sources'].each do |item|
+        item['details']['data'].each  do |book|
+            book_index += 1
+            item_xml = element.add_element('item')
+            item_xml.add_element('title').add_text("#{book_index} . #{book['title']}")
+            item_xml.add_element('subtitle').add_text("#{book['host']} - #{book['des']}")
+            item_xml.add_element('arg').add_text(book['link'])
+            item_xml.add_element('autocomplete').add_text(book['title'])
+            item_xml.add_element('match').add_text(book['title'])
+            item_xml.add_element('icon').add_text("#{Dir.pwd}/#{ICONS[book['host']]}")
+        end
+    end
+    xml.write
 end
 
 begin
-	result =  fetch_result( serch_books(keywords))
-	parse_result(result)
+    result =  fetch_result( serch_books(keywords))
+    parse_result(result)
 rescue =&gt; exception
-	message = exception.message
-	message = NETWORK_ERROR if exception.instance_of? SocketError
-	xml = REXML::Document.new
-	element = xml.add_element ('items')
-	item_xml = element.add_element('item')
-	item_xml.add_element('title').add_text("错误： #{!ERRORS[message].nil? ? ERRORS[message]:ERRORS['default']}")
-	item_xml.add_element('icon').add_text("#{Dir.pwd}/#{ICONS['error']}")
-	xml.write
+    message = exception.message
+    message = NETWORK_ERROR if exception.instance_of? SocketError
+    xml = REXML::Document.new
+    element = xml.add_element ('items')
+    item_xml = element.add_element('item')
+    item_xml.add_element('title').add_text("错误： #{!ERRORS[message].nil? ? ERRORS[message]:ERRORS['default']}")
+    item_xml.add_element('icon').add_text("#{Dir.pwd}/#{ICONS['error']}")
+    xml.write
 end
 
 </string>
@@ -216,26 +223,11 @@ end
 			<key>version</key>
 			<integer>2</integer>
 		</dict>
-		<dict>
-			<key>config</key>
-			<dict>
-				<key>autopaste</key>
-				<false/>
-				<key>clipboardtext</key>
-				<string>{query}</string>
-				<key>transient</key>
-				<false/>
-			</dict>
-			<key>type</key>
-			<string>alfred.workflow.output.clipboard</string>
-			<key>uid</key>
-			<string>1AEE333F-4073-4E76-A286-91F869C65BE1</string>
-			<key>version</key>
-			<integer>2</integer>
-		</dict>
 	</array>
 	<key>readme</key>
-	<string>Alfred workflow for Jiumo E-Book Search(鸠摩电子书搜索)</string>
+	<string>Alfred workflow for Jiumo E-Book Search(鸠摩电子书搜索)
+
+https://github.com/duxiaodou/Alfred-workflow-Jiumo</string>
 	<key>uidata</key>
 	<dict>
 		<key>1AEE333F-4073-4E76-A286-91F869C65BE1</key>
@@ -261,7 +253,7 @@ end
 		</dict>
 	</dict>
 	<key>version</key>
-	<string>1.0</string>
+	<string>1.1</string>
 	<key>webaddress</key>
 	<string>https://github.com/BadTudou/alfred-workflow-jiumo</string>
 </dict>
